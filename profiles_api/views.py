@@ -4,6 +4,9 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import filters
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.settings import api_settings
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 from profiles_api import serializers
 from profiles_api import models
@@ -54,7 +57,7 @@ class HelloViewSet(viewsets.ViewSet):
     def list(self, request):
 
         a_viewset = [
-            'Uses actions(list, create, retrieve, update, partial_complete)',
+            'Uses actions(list, create, retrieve, update, partial_update)',
             'Automatically maps to URLs using Routers',
             'Provides more functionality with less code',
         ]
@@ -96,3 +99,21 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.UpdateOwnProfile,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name', 'email',)
+
+class UserLoginApiView(ObtainAuthToken):
+    """Handle creating user authentication toens"""
+    renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
+
+class UserProfileFeedViewSet(viewsets.ModelViewSet):
+    """Handle creating, reading and updating feed item"""
+    serializer_class = serializers.ProfileFeedItemSerializer
+    queryset = models.ProfileFeedItem.objects.all()
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (
+        permissions.UpdateOwnStatus,
+        IsAuthenticated,
+    )
+
+    def perform_create(self, serializer):
+        """Sets the user profile to the logged in user"""
+        serializer.save(user_profile=self.request.user)
